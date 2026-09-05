@@ -1,5 +1,5 @@
 #!/bin/bash
-CHUNK_SIZE=12
+CHUNK_SIZE=6
 source "ani-cli" >/dev/null
 
 menu_program=fuzzel
@@ -12,7 +12,6 @@ anime_list=$(anidb_search "$query")
 [ -z "$result" ] && die "Invalid anime selection."
 anime_id="$(printf "%s" "$result" | cut -f 1)"
 anime_title="$(printf "%s" "$result" | cut -f 2)"
-printf '%s\n' "$anime_title"
 
 anidb_desc "$anime_id" || true
 episode_maps="$(anidb_episodes "$anime_id")"
@@ -21,5 +20,13 @@ ep_list="$(printf '%s' "$episode_maps" | cut -f 2)"
 
 while read -r ep_no; do
     get_video_link >/dev/null
-    printf '%s\n' "$video_link"
-done < <(grep -A "$CHUNK_SIZE" -x "$start_ep" <<<"$ep_list" | tail -n +2)
+    read -r chapters_file script_opts < <(
+        ani-skip -i $mal_id -e $ep_no --toggle | sed -n 's/.*--chapters-file=\([^ ]*\).*--script-opts=\([^ ]*\).*/\1 \2/p'
+    )
+    printf '%s, Ep. %s\t%s\t%s\t%s\n' \
+        "$anime_title" \
+        "$ep_no" \
+        "$video_link" \
+        "$chapters_file" \
+        "$script_opts"
+done < <(grep -A "$CHUNK_SIZE" -x "$start_ep" <<<"$ep_list")
