@@ -1,0 +1,25 @@
+#!/bin/bash
+CHUNK_SIZE=12
+source "ani-cli" >/dev/null
+
+menu_program=fuzzel
+skip_intro=1
+query=$(fuzzel --dmenu --prompt-only="Search AniDB: ")
+anime_list=$(anidb_search "$query")
+[ -z "$anime_list" ] && die "No results found!"
+[ "$index" -eq "$index" ] 2>/dev/null && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
+[ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: ")
+[ -z "$result" ] && die "Invalid anime selection."
+anime_id="$(printf "%s" "$result" | cut -f 1)"
+anime_title="$(printf "%s" "$result" | cut -f 2)"
+printf '%s\n' "$anime_title"
+
+anidb_desc "$anime_id" || true
+episode_maps="$(anidb_episodes "$anime_id")"
+ep_list="$(printf '%s' "$episode_maps" | cut -f 2)"
+[ -z "$ep_no" ] && start_ep=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag")
+
+while read -r ep_no; do
+    get_video_link >/dev/null
+    printf '%s\n' "$video_link"
+done < <(grep -A "$CHUNK_SIZE" -x "$start_ep" <<<"$ep_list" | tail -n +2)
