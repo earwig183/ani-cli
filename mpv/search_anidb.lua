@@ -14,17 +14,20 @@ local function search_anidb()
     mp.osd_message(tostring(out_tbl[1]), 3)
     return
   end
-  local title = table.remove(out_tbl, 1)
-  for _, url in ipairs(out_tbl) do
+  for _, line in ipairs(out_tbl) do
+    local title, url, chap_file, opts = line:match("^(.-)\t(.*)\t(.*)\t(.*)$")
+    mp.osd_message(chap_file .. " " .. opts, 3)
     mp.command_native({
       name = "loadfile",
       url = url,
       flags = "append-play",
       options = {
         ["force-media-title"] = title,
+        ["chapters-file"] = chap_file,
+        ["script-opts"] = opts,
       },
     })
   end
 end
 
-mp.add_key_binding("Ctrl+a", "search-anidb", search_anidb)
+mp.register_script_message("search-anidb", search_anidb)
