@@ -585,77 +585,85 @@ esac
 # idk where to put this, so I put it here...
 trap 'cleanup; exit 1' INT HUP TERM
 
-# searching
-case "$source" in
-history)
-    backup_old_hist
-    anime_list=$(while read -r ep_no anime_id anime_title; do process_hist_entry & done <"$histfile")
-    wait
-    [ -z "$anime_list" ] && die "No unwatched series in history!"
-    [ -z "${index##*[!0-9]*}" ] && anime_id=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: " | cut -f 1)
-    [ -z "${index##*[!0-9]*}" ] || anime_id=$(printf "%s" "$anime_list" | sed -n "${index}p" | cut -f 1)
-    [ -z "$anime_id" ] && exit 1
-    anime_title=$(printf "%s" "$anime_list" | grep "^$anime_id	" | cut -f 2 | sed 's| - episode.*||')
-    episode_maps="$(hianime_episodes "$anime_id")" || exit 1
-    ep_list="$(printf "%s" "$episode_maps" | cut -f 2)"
-    ep_no=$(printf "%s" "$anime_list" | grep "^$anime_id	" | sed -nE 's/.*- episode (.+)$/\1/p')
-    ;;
-*)
-    if [ "$menu_program" = "fzf" ]; then
-        while [ -z "$query" ]; do
-            printf "\33[2K\r\033[1;36mSearch anime: \033[0m" && read -r query
-        done
-    else
-        [ -z "$query" ] && query=$(: | menu "Search anime: " "" "$menu_extra_flags")
-        [ -z "$query" ] && exit 1
-    fi
-    # for checking new releases by specifying anime name
-    [ "$source" = "nextep" ] && time_until_next_ep "$query"
-
-    query=$(printf "%s" "$query" | sed 's| |+|g')
-
-    anime_list=$(hianime_search "$query") || exit 1
-    [ -z "$anime_list" ] && die "No results found!"
-    [ "$index" -eq "$index" ] 2>/dev/null && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
-    [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: ")
-    [ -z "$result" ] && die "Invalid anime selection"
-    anime_title="$(printf "%s" "$result" | cut -f 2)"
-    anime_id="$(printf "%s" "$result" | cut -f 1)"
-    episode_maps="$(hianime_episodes "$anime_id")" || exit 1
-    ep_list="$(printf '%s' "$episode_maps" | cut -f 2)"
-    [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag")
-    [ -z "$ep_no" ] && die "Invalid episode selection"
-    ;;
-esac
-
-# moves the cursor up one line and clears that line
-tput cuu1 && tput el
-# stores the position of cursor
-tput sc
-
-# playback & loop
-play
-[ "$player_function" = "download" ] || [ "$player_function" = "debug" ] && exit 0
-
-while cmd=$(printf "Next\nReplay\nPrevious\nSelect\nChange quality\nQuit" | nth "Playing episode $ep_no of $anime_title... "); do
-    case "$cmd" in
-    Next) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null ;;
-    Replay) video_link="$replay" ;;
-    Previous) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null ;;
-    Select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag") ;;
-    "Change quality")
-        new_quality="$(printf "%s" "$links" | menu "Select Quality: " "" "$menu_extra_flags" | cut -d ">" -f 1)"
-        [ -z "$new_quality" ] && die "No quality selected"
-        select_quality "$new_quality"
+main() {
+    # searching
+    case "$source" in
+    history)
+        backup_old_hist
+        anime_list=$(while read -r ep_no anime_id anime_title; do process_hist_entry & done <"$histfile")
+        wait
+        [ -z "$anime_list" ] && die "No unwatched series in history!"
+        [ -z "${index##*[!0-9]*}" ] && anime_id=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: " | cut -f 1)
+        [ -z "${index##*[!0-9]*}" ] || anime_id=$(printf "%s" "$anime_list" | sed -n "${index}p" | cut -f 1)
+        [ -z "$anime_id" ] && exit 1
+        anime_title=$(printf "%s" "$anime_list" | grep "^$anime_id	" | cut -f 2 | sed 's| - episode.*||')
+        episode_maps="$(hianime_episodes "$anime_id")" || exit 1
+        ep_list="$(printf "%s" "$episode_maps" | cut -f 2)"
+        ep_no=$(printf "%s" "$anime_list" | grep "^$anime_id	" | sed -nE 's/.*- episode (.+)$/\1/p')
         ;;
     *)
-        cleanup
-        exit 0
+        if [ "$menu_program" = "fzf" ]; then
+            while [ -z "$query" ]; do
+                printf "\33[2K\r\033[1;36mSearch anime: \033[0m" && read -r query
+            done
+        else
+            [ -z "$query" ] && query=$(: | menu "Search anime: " "" "$menu_extra_flags")
+            [ -z "$query" ] && exit 1
+        fi
+        # for checking new releases by specifying anime name
+        [ "$source" = "nextep" ] && time_until_next_ep "$query"
+
+        query=$(printf "%s" "$query" | sed 's| |+|g')
+
+        anime_list=$(hianime_search "$query") || exit 1
+        [ -z "$anime_list" ] && die "No results found!"
+        [ "$index" -eq "$index" ] 2>/dev/null && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
+        [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: ")
+        [ -z "$result" ] && die "Invalid anime selection"
+        anime_title="$(printf "%s" "$result" | cut -f 2)"
+        anime_id="$(printf "%s" "$result" | cut -f 1)"
+        episode_maps="$(hianime_episodes "$anime_id")" || exit 1
+        ep_list="$(printf '%s' "$episode_maps" | cut -f 2)"
+        [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag")
+        [ -z "$ep_no" ] && die "Invalid episode selection"
         ;;
     esac
-    [ -z "$ep_no" ] && die "Out of range"
+
+    # moves the cursor up one line and clears that line
+    tput cuu1 && tput el
+    # stores the position of cursor
+    tput sc
+
+    # playback & loop
     play
-done
+    [ "$player_function" = "download" ] || [ "$player_function" = "debug" ] && exit 0
+
+    while cmd=$(printf "Next\nReplay\nPrevious\nSelect\nChange quality\nQuit" | nth "Playing episode $ep_no of $anime_title... "); do
+        case "$cmd" in
+        Next) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null ;;
+        Replay) video_link="$replay" ;;
+        Previous) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null ;;
+        Select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag") ;;
+        "Change quality")
+            new_quality="$(printf "%s" "$links" | menu "Select Quality: " "" "$menu_extra_flags" | cut -d ">" -f 1)"
+            [ -z "$new_quality" ] && die "No quality selected"
+            select_quality "$new_quality"
+            ;;
+        *)
+            cleanup
+            exit 0
+            ;;
+        esac
+        [ -z "$ep_no" ] && die "Out of range"
+        play
+    done
+}
+
+case "$0" in
+*ani-cli)
+    main
+    ;;
+esac
 
 # ani-cli
 #
