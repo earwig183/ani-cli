@@ -514,12 +514,12 @@ while [ $# -gt 0 ]; do
         esac
         ;;
     -q | --quality)
-        [ $# -lt 2 ] && die "missing argument!"
+        [ $# -lt 2 ] && die "Missing argument!"
         quality="$2"
         shift
         ;;
     -S | --select-nth)
-        [ $# -lt 2 ] && die "missing argument!"
+        [ $# -lt 2 ] && die "Missing argument!"
         index="$2"
         shift
         ;;
@@ -542,7 +542,7 @@ while [ $# -gt 0 ]; do
     -V | --version) version_info ;;
     -h | --help) help_info ;;
     -e | --episode | -r | --range)
-        [ $# -lt 2 ] && die "missing argument!"
+        [ $# -lt 2 ] && die "Missing argument!"
         ep_no="$2"
         shift
         ;;
@@ -637,13 +637,13 @@ tput sc
 play
 [ "$player_function" = "download" ] || [ "$player_function" = "debug" ] && exit 0
 
-while cmd=$(printf "next\nreplay\nprevious\nselect\nchange_quality\nquit" | nth "Playing episode $ep_no of $anime_title... "); do
+while cmd=$(printf "Next\nReplay\nPrevious\nSelect\nChange quality\nQuit" | nth "Playing episode $ep_no of $anime_title... "); do
     case "$cmd" in
-    next) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null ;;
-    replay) video_link="$replay" ;;
-    previous) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null ;;
-    select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag") ;;
-    change_quality)
+    Next) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null ;;
+    Replay) video_link="$replay" ;;
+    Previous) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null ;;
+    Select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag") ;;
+    "Change quality")
         new_quality="$(printf "%s" "$links" | menu "Select Quality: " "" "$menu_extra_flags" | cut -d ">" -f 1)"
         [ -z "$new_quality" ] && die "No quality selected"
         select_quality "$new_quality"
